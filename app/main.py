@@ -12,7 +12,7 @@ app = FastAPI(title="API Controle Financeiro")
 # Inicializa o banco
 init_db()
 
-# CORS (importante se você usa frontend)
+# CORS (importante para frontend e para evitar erros no Render)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Middleware de auditoria (sempre depois do CORS)
+# Middleware de auditoria (vem depois do CORS)
 app.add_middleware(AuditoriaMiddleware)
 
 # Rotas
@@ -29,7 +29,7 @@ app.include_router(auth_router, prefix="/auth", tags=["Autenticação"])
 app.include_router(transacoes_router, prefix="/transacoes", tags=["Transações"])
 app.include_router(categorias_router, prefix="/categorias", tags=["Categorias"])
 
-# Rota raiz
+# Rota raiz (Render usa isso para detectar que a API está viva)
 @app.get("/")
 def root():
     return {"status": "ok", "mensagem": "API rodando!"}
