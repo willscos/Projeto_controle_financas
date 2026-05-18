@@ -7,16 +7,17 @@ from app.controllers.categorias_controller import router as categorias_router
 from app.models.database import init_db
 from app.middleware.auditoria import AuditoriaMiddleware
 
+
 app = FastAPI(title="API Controle Financeiro")
 
-# Inicializa o banco
+# Inicializa o banco (somente porque você não usa Alembic)
 init_db()
 
-# CORS (importante para frontend e para evitar erros no Render)
+# CORS (seguro e compatível com qualquer frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=["*"],          # qualquer origem
+    allow_credentials=False,      # obrigatório quando allow_origins="*"
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -29,7 +30,7 @@ app.include_router(auth_router, prefix="/auth", tags=["Autenticação"])
 app.include_router(transacoes_router, prefix="/transacoes", tags=["Transações"])
 app.include_router(categorias_router, prefix="/categorias", tags=["Categorias"])
 
-# Rota raiz (Render usa isso para detectar que a API está viva)
+# Rota raiz (Render usa isso para health check)
 @app.get("/")
 def root():
     return {"status": "ok", "mensagem": "API rodando!"}
