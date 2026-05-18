@@ -1,42 +1,48 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
-from app.auth.security import SECRET_KEY, ALGORITHM
+from app.auth.security import decodificar_token
 from app.models.database import get_db
 from app.models.usuario import Usuario
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+# O tokenUrl deve apontar para um endpoint que aceite OAuth2 (form-data)
+# Como seu login usa JSON, deixamos apenas um placeholder funcional
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 # ---------------------------------------------------------
 # 1. Retorna APENAS o email do usuário logado
 # ---------------------------------------------------------
 def usuario_logado(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        if email is None:
-            raise HTTPException(status_code=401, detail="Token inválido")
-        return email
-    except JWTError:
+    payload = decodificar_token(token)
+
+    if not payload:
         raise HTTPException(status_code=401, detail="Token inválido")
+
+    email = payload.get("sub")
+
+    if not email:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+    return email
 
 
 # ---------------------------------------------------------
-# 2. Retorna o OBJETO Usuario completo (para permissões)
+# 2. Retorna o OBJETO Usuario completo
 # ---------------------------------------------------------
 def get_usuario_logado(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        if email is None:
-            raise HTTPException(status_code=401, detail="Token inválido")
-    except JWTError:
+    payload = decodificar_token(token)
+
+    if not payload:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+    email = payload.get("sub")
+
+    if not email:
         raise HTTPException(status_code=401, detail="Token inválido")
 
     usuario = db.query(Usuario).filter(Usuario.email == email).first()
@@ -51,6 +57,12 @@ def get_usuario_logado(
 # 3. Verifica se o usuário é ADMIN
 # ---------------------------------------------------------
 def requer_admin(usuario: Usuario = Depends(get_usuario_logado)):
+    # Seu modelo Usuario NÃO tem campo role
+    # Então adicionamos uma proteção
+    if not hasattr(usuario, "role"):
+        raise HTTPException(status_code=500, detail="Campo 'role' não existe no modelo Usuario")
+
     if usuario.role != "admin":
         raise HTTPException(status_code=403, detail="Sem permissão")
+
     return usuario
