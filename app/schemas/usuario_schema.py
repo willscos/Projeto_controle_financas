@@ -1,26 +1,23 @@
-from pydantic import BaseModel
-
-
-# ---------------------------
-# BASE
-# ---------------------------
-class UsuarioBase(BaseModel):
-    nome: str
-    email: str
+from pydantic import BaseModel, EmailStr
 
 
 # ---------------------------
 # CRIAÇÃO DE USUÁRIO
 # ---------------------------
-class UsuarioCreate(UsuarioBase):
+class UsuarioCreate(BaseModel):
+    nome: str
+    email: EmailStr
     senha: str
 
 
 # ---------------------------
 # RESPOSTA DE USUÁRIO
 # ---------------------------
-class UsuarioResponse(UsuarioBase):
+class UsuarioResponse(BaseModel):
     id: int
+    nome: str
+    email: EmailStr
 
-    class Config:
-        from_attributes = True  # substitui orm_mode no Pydantic v2
+    model_config = {
+        "from_attributes": True  # substitui orm_mode no Pydantic v2
+    }
