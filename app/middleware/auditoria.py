@@ -1,8 +1,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi import Request
-from jose import jwt, JWTError
 
-from app.auth.security import SECRET_KEY, ALGORITHM
+from app.auth.security import decodificar_token
 from app.models.database import SessionLocal
 from app.models.auditoria import Auditoria
 
@@ -13,20 +12,16 @@ class AuditoriaMiddleware(BaseHTTPMiddleware):
 
         usuario_email = "anônimo"
 
-        # Tenta extrair o token manualmente (middleware não usa Depends)
+        # Extrai token manualmente (middleware não usa Depends)
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
 
-            try:
-                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                email = payload.get("sub")
-                if email:
-                    usuario_email = email
-            except JWTError:
-                pass  # token inválido → continua como "anônimo"
+            payload = decodificar_token(token)
+            if payload and payload.get("sub"):
+                usuario_email = payload["sub"]
 
-        # Continua a requisição
+        # Executa a requisição
         response = await call_next(request)
 
         # Registra auditoria
@@ -34,11 +29,13 @@ class AuditoriaMiddleware(BaseHTTPMiddleware):
             log = Auditoria(
                 metodo=request.method,
                 rota=request.url.path,
-                usuario=usuario_email
+                usuario=usuario_email,
+                status=response.status_code,
+                ip=request.client.host
             )
             db.add(log)
             db.commit()
-        except:
+        except Exception:
             db.rollback()
         finally:
             db.close()
