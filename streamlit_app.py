@@ -1,43 +1,44 @@
 import streamlit as st
 import requests
+import pandas as pd
+import plotly.express as px
 
-# URL da sua API FastAPI no Render
+# URL da API FastAPI no Render
 API_URL = "https://projetocontrolefinancas-wsc.onrender.com"
 
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
-st.title("💰 Controle Financeiro – Frontend Streamlit")
+st.title("💰 Controle Financeiro – Dashboard Completo")
 
 
 # ---------------------------
-# FUNÇÃO DE LOGIN
+# FUNÇÕES DE API
 # ---------------------------
 def login(email, senha):
     try:
-        response = requests.post(
-            f"{API_URL}/auth/login",
-            json={"email": email, "senha": senha},
-            timeout=10
-        )
-        return response.json()
-    except Exception as e:
-        return {"erro": str(e)}
+        r = requests.post(f"{API_URL}/auth/login", json={"email": email, "senha": senha})
+        return r.json()
+    except:
+        return {"erro": "Erro ao conectar com o servidor"}
 
 
-# ---------------------------
-# FUNÇÃO PARA BUSCAR TRANSAÇÕES
-# ---------------------------
 def get_transacoes(token):
     headers = {"Authorization": f"Bearer {token}"}
+    r = requests.get(f"{API_URL}/transacoes", headers=headers)
     try:
-        response = requests.get(f"{API_URL}/transacoes", headers=headers, timeout=10)
-        return response.json()
-    except Exception as e:
-        return {"erro": str(e)}
+        return r.json()
+    except:
+        return []
+
+
+def criar_transacao(token, dados):
+    headers = {"Authorization": f"Bearer {token}"}
+    r = requests.post(f"{API_URL}/transacoes", json=dados, headers=headers)
+    return r.json()
 
 
 # ---------------------------
-# INTERFACE DE LOGIN
+# LOGIN
 # ---------------------------
 if "token" not in st.session_state:
     st.subheader("🔐 Login")
@@ -53,25 +54,89 @@ if "token" not in st.session_state:
             st.success("Login realizado com sucesso!")
             st.rerun()
         else:
-            st.error("Erro ao fazer login. Verifique suas credenciais.")
+            st.error("Credenciais inválidas ou erro no servidor.")
 else:
     st.success("Você está logado!")
 
-    # ---------------------------
-    # LISTAR TRANSAÇÕES
-    # ---------------------------
-    st.subheader("📄 Suas Transações")
-
-    dados = get_transacoes(st.session_state["token"])
-
-    if isinstance(dados, list):
-        st.dataframe(dados)
-    else:
-        st.error("Erro ao carregar transações")
+    token = st.session_state["token"]
 
     # ---------------------------
-    # BOTÃO DE LOGOUT
+    # MENU LATERAL
     # ---------------------------
-    if st.button("Sair"):
+    menu = st.sidebar.radio("Menu", ["Dashboard", "Transações", "Nova Transação", "Sair"])
+
+    # ---------------------------
+    # DASHBOARD
+    # ---------------------------
+    if menu == "Dashboard":
+        st.subheader("📊 Dashboard Financeiro")
+
+        dados = get_transacoes(token)
+
+        if isinstance(dados, list) and len(dados) > 0:
+            df = pd.DataFrame(dados)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                total_receitas = df[df["tipo"] == "receita"]["valor"].sum()
+                st.metric("Total de Receitas", f"R$ {total_receitas:,.2f}")
+
+            with col2:
+                total_despesas = df[df["tipo"] == "despesa"]["valor"].sum()
+                st.metric("Total de Despesas", f"R$ {total_despesas:,.2f}")
+
+            # Gráfico de pizza
+            fig = px.pie(df, names="categoria", values="valor", title="Distribuição por Categoria")
+            st.plotly_chart(fig, use_container_width=True)
+
+        else:
+            st.info("Nenhuma transação encontrada.")
+
+    # ---------------------------
+    # LISTAGEM DE TRANSAÇÕES
+    # ---------------------------
+    if menu == "Transações":
+        st.subheader("📄 Suas Transações")
+
+        dados = get_transacoes(token)
+
+        if isinstance(dados, list):
+            st.dataframe(dados)
+        else:
+            st.error("Erro ao carregar transações")
+
+    # ---------------------------
+    # CRIAR NOVA TRANSAÇÃO
+    # ---------------------------
+    if menu == "Nova Transação":
+        st.subheader("➕ Nova Transação")
+
+        tipo = st.selectbox("Tipo", ["receita", "despesa"])
+        valor = st.number_input("Valor", min_value=0.0, step=0.01)
+        categoria = st.text_input("Categoria")
+        descricao = st.text_input("Descrição")
+        data = st.date_input("Data")
+
+        if st.button("Salvar"):
+            dados = {
+                "tipo": tipo,
+                "valor": valor,
+                "categoria": categoria,
+                "descricao": descricao,
+                "data": str(data)
+            }
+
+            resultado = criar_transacao(token, dados)
+
+            if "id" in resultado:
+                st.success("Transação criada com sucesso!")
+            else:
+                st.error("Erro ao criar transação.")
+
+    # ---------------------------
+    # LOGOUT
+    # ---------------------------
+    if menu == "Sair":
         del st.session_state["token"]
         st.rerun()
