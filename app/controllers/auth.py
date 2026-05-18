@@ -12,7 +12,7 @@ from app.auth.security import (
     criar_refresh_token
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 
 # ---------------------------
@@ -37,7 +37,7 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
 
 
 # ---------------------------
-# LOGIN CORRIGIDO
+# LOGIN
 # ---------------------------
 @router.post("/login")
 def login(dados: LoginSchema, db: Session = Depends(get_db)):
