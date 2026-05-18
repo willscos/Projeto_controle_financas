@@ -22,6 +22,17 @@ def login(email, senha):
         return {"erro": "Erro ao conectar com o servidor"}
 
 
+def registrar_usuario(nome, email, senha):
+    try:
+        r = requests.post(
+            f"{API_URL}/auth/registrar",
+            json={"nome": nome, "email": email, "senha": senha}
+        )
+        return r.json()
+    except:
+        return {"erro": "Erro ao conectar com o servidor"}
+
+
 def get_transacoes(token):
     headers = {"Authorization": f"Bearer {token}"}
     r = requests.get(f"{API_URL}/transacoes", headers=headers)
@@ -38,23 +49,47 @@ def criar_transacao(token, dados):
 
 
 # ---------------------------
-# LOGIN
+# MENU INICIAL (LOGIN / CADASTRO)
 # ---------------------------
 if "token" not in st.session_state:
-    st.subheader("🔐 Login")
 
-    email = st.text_input("Email")
-    senha = st.text_input("Senha", type="password")
+    menu_login = st.radio("Acesso", ["Entrar", "Criar Conta"])
 
-    if st.button("Entrar"):
-        resultado = login(email, senha)
+    if menu_login == "Entrar":
+        st.subheader("🔐 Login")
 
-        if "access_token" in resultado:
-            st.session_state["token"] = resultado["access_token"]
-            st.success("Login realizado com sucesso!")
-            st.rerun()
-        else:
-            st.error("Credenciais inválidas ou erro no servidor.")
+        email = st.text_input("Email")
+        senha = st.text_input("Senha", type="password")
+
+        if st.button("Entrar"):
+            resultado = login(email, senha)
+
+            if "access_token" in resultado:
+                st.session_state["token"] = resultado["access_token"]
+                st.success("Login realizado com sucesso!")
+                st.rerun()
+            else:
+                st.error("Credenciais inválidas ou erro no servidor.")
+
+    else:
+        st.subheader("🧑‍💻 Criar Conta")
+
+        nome = st.text_input("Nome completo")
+        email = st.text_input("Email")
+        senha = st.text_input("Senha", type="password")
+        confirmar = st.text_input("Confirmar senha", type="password")
+
+        if st.button("Registrar"):
+            if senha != confirmar:
+                st.error("As senhas não coincidem.")
+            else:
+                resultado = registrar_usuario(nome, email, senha)
+
+                if "id" in resultado:
+                    st.success("Conta criada com sucesso! Agora faça login.")
+                else:
+                    st.error(resultado.get("detail", "Erro ao registrar usuário."))
+
 else:
     st.success("Você está logado!")
 
@@ -86,7 +121,6 @@ else:
                 total_despesas = df[df["tipo"] == "despesa"]["valor"].sum()
                 st.metric("Total de Despesas", f"R$ {total_despesas:,.2f}")
 
-            # Gráfico de pizza
             fig = px.pie(df, names="categoria", values="valor", title="Distribuição por Categoria")
             st.plotly_chart(fig, use_container_width=True)
 
