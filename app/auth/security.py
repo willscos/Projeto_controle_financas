@@ -7,11 +7,16 @@ import os
 # CONFIGURAÇÕES
 # ---------------------------
 
-SECRET_KEY = os.getenv("SECRET_KEY", "CHAVE_INSEGURA_TROCAR")
+SECRET_KEY = os.environ.get("SECRET_KEY")
 ALGORITHM = "HS256"
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 30
+
+# Validação obrigatória em produção
+if not SECRET_KEY:
+    raise ValueError("⚠️ A variável de ambiente SECRET_KEY não está definida!")
+
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
