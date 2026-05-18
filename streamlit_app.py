@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.express as px
 
 # URL da API FastAPI no Render
-API_URL = API_URL = "https://projeto-controle-financas.onrender.com"
+API_URL = "https://projeto-controle-financas.onrender.com"
 
 st.set_page_config(page_title="Controle Financeiro", layout="wide")
 
