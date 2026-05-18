@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, Date
-from .database import Base
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey
+from app.models.database import Base
 
 class Transacao(Base):
     __tablename__ = "transacoes"
@@ -10,3 +10,11 @@ class Transacao(Base):
     categoria = Column(String, nullable=False)
     descricao = Column(String)
     data = Column(Date, nullable=False)
+
+    # Transação pertence a um usuário
+    usuario_email = Column(
+        String,
+        ForeignKey("usuarios.email", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
