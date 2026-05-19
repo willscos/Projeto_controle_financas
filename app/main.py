@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware  # ADD THIS
 
 from app.controllers.auth import router as auth_router
 from app.controllers.transacoes_controller import router as transacoes_router
@@ -10,11 +9,6 @@ from app.middleware.auditoria import AuditoriaMiddleware
 
 
 app = FastAPI(title="API Controle Financeiro")
-
-# REMOVE any HTTPS redirect middleware if it exists!
-# app.add_middleware(HTTPSRedirectMiddleware) <- REMOVE THIS
-
-# If HTTPSRedirectMiddleware exists in your middleware folder, disable it!
 
 init_db()
 
@@ -28,9 +22,10 @@ app.add_middleware(
 
 app.add_middleware(AuditoriaMiddleware)
 
-app.include_router(auth_router, tags=["Autenticação"])
-app.include_router(transacoes_router, tags=["Transações"])
-app.include_router(categorias_router, tags=["Categorias"])
+# ADD prefixes here, remove from controllers!
+app.include_router(auth_router, prefix="/auth", tags=["Autenticação"])
+app.include_router(transacoes_router, prefix="/transacoes", tags=["Transações"])
+app.include_router(categorias_router, prefix="/categorias", tags=["Categorias"])
 
 @app.get("/")
 def root():
