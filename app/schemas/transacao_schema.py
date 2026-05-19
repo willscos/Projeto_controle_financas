@@ -1,18 +1,21 @@
 from pydantic import BaseModel
-from datetime import date
+from typing import Optional
+
 
 class TransacaoBase(BaseModel):
     tipo: str
     valor: float
     categoria: str
-    descricao: str | None = None
-    data: date
+    descricao: Optional[str] = None
+    data: str  # Changed from date to str
+
 
 class TransacaoCreate(TransacaoBase):
     pass
+
 
 class TransacaoResponse(TransacaoBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True  # Fixed: was orm_mode
