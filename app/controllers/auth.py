@@ -12,7 +12,7 @@ from app.auth.security import (
     criar_refresh_token
 )
 
-router = APIRouter(prefix="/auth", tags=["Autenticação"])
+router = APIRouter(tags=["Autenticação"])
 
 
 # ---------------------------
