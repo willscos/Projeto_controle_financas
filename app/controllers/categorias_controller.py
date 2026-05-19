@@ -6,19 +6,16 @@ from app.models.categoria import Categoria
 from app.schemas.categoria_schema import CategoriaCreate, CategoriaResponse
 from app.auth.deps import usuario_logado
 
-router = APIRouter(redirect_slashes=False)
+# NO prefix - main.py handles this
+router = APIRouter()
 
 
-# ---------------------------
-# CRIAR CATEGORIA
-# ---------------------------
 @router.post("/", response_model=CategoriaResponse)
 def criar_categoria(
     dados: CategoriaCreate,
     db: Session = Depends(get_db),
     usuario: str = Depends(usuario_logado)
 ):
-    # Verifica se já existe categoria com o mesmo nome para este usuário
     existente = (
         db.query(Categoria)
         .filter(
@@ -33,7 +30,7 @@ def criar_categoria(
 
     nova = Categoria(
         **dados.dict(),
-        usuario_email=usuario  # associa ao usuário logado
+        usuario_email=usuario
     )
 
     db.add(nova)
@@ -43,9 +40,6 @@ def criar_categoria(
     return nova
 
 
-# ---------------------------
-# LISTAR CATEGORIAS DO USUÁRIO
-# ---------------------------
 @router.get("/", response_model=list[CategoriaResponse])
 def listar_categorias(
     db: Session = Depends(get_db),
@@ -58,9 +52,6 @@ def listar_categorias(
     )
 
 
-# ---------------------------
-# REMOVER CATEGORIA
-# ---------------------------
 @router.delete("/{id}")
 def remover_categoria(
     id: int,
