@@ -6,7 +6,7 @@ from app.models.categoria import Categoria
 from app.schemas.categoria_schema import CategoriaCreate, CategoriaResponse
 from app.auth.deps import usuario_logado
 
-router = APIRouter()
+router = APIRouter(redirect_slashes=False)
 
 
 # ---------------------------
