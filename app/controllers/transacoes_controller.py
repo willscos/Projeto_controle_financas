@@ -60,6 +60,44 @@ def calcular_saldo(
     return {"saldo": saldo}
 
 
+# ============================
+# ✅ NOVA ROTA: ATUALIZAR
+# ============================
+@router.put("/{id}", response_model=TransacaoResponse)
+def atualizar_transacao(
+    id: int,
+    dados: TransacaoCreate,
+    db: Session = Depends(get_db),
+    usuario: str = Depends(usuario_logado)
+):
+    transacao = (
+        db.query(Transacao)
+        .filter(
+            Transacao.id == id,
+            Transacao.usuario_email == usuario
+        )
+        .first()
+    )
+
+    if not transacao:
+        raise HTTPException(status_code=404, detail="Transação não encontrada")
+
+    # Atualiza os campos
+    transacao.tipo = dados.tipo
+    transacao.valor = dados.valor
+    transacao.categoria = dados.categoria
+    transacao.descricao = dados.descricao
+    transacao.data = dados.data
+
+    db.commit()
+    db.refresh(transacao)
+
+    return transacao
+
+
+# ============================
+# ✅ ROTA JÁ EXISTENTE: DELETAR
+# ============================
 @router.delete("/{id}")
 def remover_transacao(
     id: int,
