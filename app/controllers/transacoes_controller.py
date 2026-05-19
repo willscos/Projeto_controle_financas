@@ -8,7 +8,7 @@ from app.schemas.transacao_schema import TransacaoCreate, TransacaoResponse
 from app.auth.deps import usuario_logado
 
 # NO prefix - main.py handles this
-router = APIRouter()
+router = APIRouter(tags=["Transações"])
 
 
 @router.post("/", response_model=TransacaoResponse)
