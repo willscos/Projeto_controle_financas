@@ -12,9 +12,10 @@ st.set_page_config(page_title="Controle Financeiro", layout="wide")
 st.title("💰 Controle Financeiro – Dashboard Completo")
 
 
-# ---------------------------
+# ============================
 # FUNÇÕES DE API
-# ---------------------------
+# ============================
+
 def login(email, senha):
     try:
         r = requests.post(f"{API_URL}/auth/login", json={"email": email, "senha": senha})
@@ -36,7 +37,7 @@ def registrar_usuario(nome, email, senha):
 
 def get_transacoes(token):
     headers = {"Authorization": f"Bearer {token}"}
-    r = requests.get(f"{API_URL}/transacoes/", headers=headers)  # ← ADDED /
+    r = requests.get(f"{API_URL}/transacoes/", headers=headers)
     try:
         return r.json()
     except:
@@ -45,13 +46,28 @@ def get_transacoes(token):
 
 def criar_transacao(token, dados):
     headers = {"Authorization": f"Bearer {token}"}
-    r = requests.post(f"{API_URL}/transacoes/", json=dados, headers=headers)  # ← ADDED /
+    r = requests.post(f"{API_URL}/transacoes/", json=dados, headers=headers)
     return r.json()
 
 
-# ---------------------------
+# ✅ NOVA: Atualizar transação
+def atualizar_transacao(token, id, dados):
+    headers = {"Authorization": f"Bearer {token}"}
+    r = requests.put(f"{API_URL}/transacoes/{id}", json=dados, headers=headers)
+    return r.json()
+
+
+# ✅ NOVA: Deletar transação
+def remover_transacao(token, id):
+    headers = {"Authorization": f"Bearer {token}"}
+    r = requests.delete(f"{API_URL}/transacoes/{id}", headers=headers)
+    return r.json()
+
+
+# ============================
 # MENU INICIAL (LOGIN / CADASTRO)
-# ---------------------------
+# ============================
+
 if "token" not in st.session_state:
 
     menu_login = st.radio("Acesso", ["Entrar", "Criar Conta"])
@@ -96,14 +112,17 @@ else:
 
     token = st.session_state["token"]
 
-    # ---------------------------
+    # ============================
     # MENU LATERAL
-    # ---------------------------
-    menu = st.sidebar.radio("Menu", ["📊 Dashboard", "📄 Transações", "➕ Nova Transação", "🚪 Sair"])
+    # ============================
+    menu = st.sidebar.radio(
+        "Menu", 
+        ["📊 Dashboard", "📄 Transações", "➕ Nova Transação", "✏️ Editar_transação", "🚪 Sair"]
+    )
 
-    # ---------------------------
+    # ============================
     # DASHBOARD
-    # ---------------------------
+    # ============================
     if menu == "📊 Dashboard":
         st.subheader("📊 Dashboard Financeiro")
 
@@ -132,22 +151,41 @@ else:
         else:
             st.info("Nenhuma transação encontrada.")
 
-    # ---------------------------
+    # ============================
     # LISTAGEM DE TRANSAÇÕES
-    # ---------------------------
+    # ============================
     if menu == "📄 Transações":
         st.subheader("📄 Suas Transações")
 
         dados = get_transacoes(token)
 
-        if isinstance(dados, list):
-            st.dataframe(dados)
+        if isinstance(dados, list) and len(dados) > 0:
+            # Formata para exibição bonita
+            df = pd.DataFrame(dados)
+            df = df.sort_values("data", ascending=False)
+            
+            # Renomeia colunas para português
+            df_display = df.rename(columns={
+                "id": "ID",
+                "tipo": "Tipo",
+                "valor": "Valor",
+                "categoria": "Categoria",
+                "descricao": "Descrição",
+                "data": "Data",
+                "usuario_email": "Usuário"
+            })
+            
+            st.dataframe(df_display, use_container_width=True)
+            
+            st.info(f"Total: {len(dados)} transações")
+        elif isinstance(dados, list) and len(dados) == 0:
+            st.info("Nenhuma transação encontrada.")
         else:
             st.error("Erro ao carregar transações")
 
-    # ---------------------------
+    # ============================
     # CRIAR NOVA TRANSAÇÃO
-    # ---------------------------
+    # ============================
     if menu == "➕ Nova Transação":
         st.subheader("➕ Nova Transação")
 
@@ -157,7 +195,7 @@ else:
         descricao = st.text_input("Descrição")
         
         data_selecionada = st.date_input("Data")
-        data_formatada = data_selecionada.strftime("%Y-%m-%d")  # Formata corretamente
+        data_formatada = data_selecionada.strftime("%Y-%m-%d")
 
         if st.button("💾 Salvar"):
             dados = {
@@ -175,9 +213,101 @@ else:
             else:
                 st.error(resultado.get("detail", "Erro ao criar transação."))
 
-    # ---------------------------
+    # ============================
+    # ✏️ EDITAR / DELETAR TRANSAÇÃO
+    # ============================
+    if menu == "✏️ Editar_transação":
+        st.subheader("✏️ Editar ou Remover Transação")
+        
+        dados = get_transacoes(token)
+        
+        if isinstance(dados, list) and len(dados) > 0:
+            # Cria opção de seleção
+            opcoes = {f"ID {t['id']} - {t['tipo']} - R$ {t['valor']} - {t['categoria']}": t['id'] for t in dados}
+            opcoes["Selecione..."] = 0
+            
+            selecionado = st.selectbox(
+                "Selecione a transação:",
+                options=list(opcoes.keys()),
+                index=0
+            )
+            
+            if selecionado != "Selecione...":
+                transacao_id = opcoes[selecionado]
+                transacao = next((t for t in dados if t["id"] == transacao_id), None)
+                
+                if transacao:
+                    st.divider()
+                    
+                    # Campos para editar
+                    novo_tipo = st.selectbox(
+                        "Tipo", 
+                        ["receita", "despesa"], 
+                        index=0 if transacao["tipo"] == "receita" else 1
+                    )
+                    novo_valor = st.number_input(
+                        "Valor", 
+                        min_value=0.01, 
+                        step=0.01,
+                        value=float(transacao["valor"])
+                    )
+                    nova_categoria = st.text_input(
+                        "Categoria", 
+                        value=transacao["categoria"]
+                    )
+                    nova_descricao = st.text_input(
+                        "Descrição", 
+                        value=transacao.get("descricao", "") or ""
+                    )
+                    
+                    # Converte data
+                    data_original = transacao["data"]
+                    try:
+                        data_date = date.fromisoformat(data_original)
+                    except:
+                        data_date = date.today()
+                    
+                    nova_data = st.date_input("Data", value=data_date)
+                    data_final = nova_data.strftime("%Y-%m-%d")
+                    
+                    st.divider()
+                    
+                    # Botões de ação
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        if st.button("💾 Atualizar Transação", use_container_width=True):
+                            dados_att = {
+                                "tipo": novo_tipo,
+                                "valor": novo_valor,
+                                "categoria": nova_categoria,
+                                "descricao": nova_descricao,
+                                "data": data_final
+                            }
+                            
+                            resultado = atualizar_transacao(token, transacao_id, dados_att)
+                            
+                            if "id" in resultado:
+                                st.success("✅ Transação atualizada com sucesso!")
+                            else:
+                                st.error(f"Erro ao atualizar: {resultado.get('detail', 'Erro desconhecido')}")
+                    
+                    with col2:
+                        if st.button("🗑️ Remover Transação", type="primary", use_container_width=True):
+                            resultado = remover_transacao(token, transacao_id)
+                            
+                            if "mensagem" in resultado:
+                                st.success("✅ Transação removida com sucesso!")
+                                st.rerun()
+                            else:
+                                st.error(f"Erro ao remover: {resultado.get('detail', 'Erro desconhecido')}")
+                
+        else:
+            st.info("Nenhuma transação para editar.")
+
+    # ============================
     # LOGOUT
-    # ---------------------------
+    # ============================
     if menu == "🚪 Sair":
         del st.session_state["token"]
         st.rerun()
