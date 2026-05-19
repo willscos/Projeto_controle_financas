@@ -10,27 +10,23 @@ from app.middleware.auditoria import AuditoriaMiddleware
 
 app = FastAPI(title="API Controle Financeiro")
 
-# Inicializa o banco (somente porque você não usa Alembic)
 init_db()
 
-# CORS (seguro e compatível com qualquer frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],          # qualquer origem
-    allow_credentials=False,      # obrigatório quando allow_origins="*"
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Middleware de auditoria (vem depois do CORS)
 app.add_middleware(AuditoriaMiddleware)
 
-# Rotas
-app.include_router(auth_router, prefix="/auth", tags=["Autenticação"])
-app.include_router(transacoes_router, prefix="/transacoes", tags=["Transações"])
-app.include_router(categorias_router, prefix="/categorias", tags=["Categorias"])
+# Removed prefix="/auth" - let auth.py handle it
+app.include_router(auth_router, tags=["Autenticação"])
+app.include_router(transacoes_router, tags=["Transações"])
+app.include_router(categorias_router, tags=["Categorias"])
 
-# Rota raiz (Render usa isso para health check)
 @app.get("/")
 def root():
     return {"status": "ok", "mensagem": "API rodando!"}
