@@ -7,7 +7,7 @@ from app.schemas.categoria_schema import CategoriaCreate, CategoriaResponse
 from app.auth.deps import usuario_logado
 
 # NO prefix - main.py handles this
-router = APIRouter()
+router = APIRouter(tags=["Categorias"])
 
 
 @router.post("/", response_model=CategoriaResponse)
