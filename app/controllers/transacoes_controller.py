@@ -7,13 +7,10 @@ from app.models.transacao import Transacao
 from app.schemas.transacao_schema import TransacaoCreate, TransacaoResponse
 from app.auth.deps import usuario_logado
 
-# Add redirect_slashes=False to prevent 307 redirect loop!
-router = APIRouter(redirect_slashes=False)
+# NO prefix - main.py handles this
+router = APIRouter()
 
 
-# ---------------------------
-# CRIAR TRANSAÇÃO
-# ---------------------------
 @router.post("/", response_model=TransacaoResponse)
 def criar_transacao(
     dados: TransacaoCreate,
@@ -32,10 +29,7 @@ def criar_transacao(
     return nova
 
 
-# ---------------------------
-# LISTAR TRANSAÇÕES
-# ---------------------------
-@router.get("/", response_model=list[TransacaoResponse])
+@router.get("/", response_model=List[TransacaoResponse])
 def listar_transacoes(
     db: Session = Depends(get_db),
     usuario: str = Depends(usuario_logado)
@@ -45,3 +39,46 @@ def listar_transacoes(
         .filter(Transacao.usuario_email == usuario)
         .all()
     )
+
+
+@router.get("/saldo")
+def calcular_saldo(
+    db: Session = Depends(get_db),
+    usuario: str = Depends(usuario_logado)
+):
+    transacoes = (
+        db.query(Transacao)
+        .filter(Transacao.usuario_email == usuario)
+        .all()
+    )
+
+    saldo = sum(
+        t.valor if t.tipo == "receita" else -t.valor
+        for t in transacoes
+    )
+
+    return {"saldo": saldo}
+
+
+@router.delete("/{id}")
+def remover_transacao(
+    id: int,
+    db: Session = Depends(get_db),
+    usuario: str = Depends(usuario_logado)
+):
+    transacao = (
+        db.query(Transacao)
+        .filter(
+            Transacao.id == id,
+            Transacao.usuario_email == usuario
+        )
+        .first()
+    )
+
+    if not transacao:
+        raise HTTPException(status_code=404, detail="Transação não encontrada")
+
+    db.delete(transacao)
+    db.commit()
+
+    return {"mensagem": "Transação removida com sucesso"}
